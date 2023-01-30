@@ -1,7 +1,7 @@
 import unittest
 
-class TestClassWithFailingClassSetUp(unittest.TestCase):
 
+class TestClassWithFailingClassSetUp(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         assert False
@@ -12,8 +12,8 @@ class TestClassWithFailingClassSetUp(unittest.TestCase):
     def test_something_else(self):
         pass
 
-class TestClassWithFailingClassTearDownAndPassingTests(unittest.TestCase):
 
+class TestClassWithFailingClassTearDownAndPassingTests(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         assert False
@@ -23,9 +23,9 @@ class TestClassWithFailingClassTearDownAndPassingTests(unittest.TestCase):
 
     def test_something_else(self):
         pass
+
 
 class TestClassWithFailingClassTearDownAndFailingTests(unittest.TestCase):
-
     @classmethod
     def tearDownClass(cls):
         assert False
@@ -35,10 +35,3 @@ class TestClassWithFailingClassTearDownAndFailingTests(unittest.TestCase):
 
     def test_something_else(self):
         assert False
-
-
-
-
-
-
-

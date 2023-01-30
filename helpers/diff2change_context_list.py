@@ -12,7 +12,7 @@ USAGE_EXAMPLE = """
 Example usage: git diff | diff2change_context_list.py
 """
 
-DEFAULT_CONTEXT_SEPARATOR = '|-|'
+DEFAULT_CONTEXT_SEPARATOR = "|-|"
 FILE_PATTERN = r"^diff --git a/(.+) b/(.+)$"
 BLOCK_PATTERN = r"^@@ [-\+0-9,]+ [-\+0-9,]+ @@ (.+)$"
 
@@ -39,7 +39,9 @@ def main():
             if match:
                 change_context = match.group(1)
                 if change_context:
-                    changes.add('{}{}{}'.format(current_file, args.separator, change_context))
+                    changes.add(
+                        "{}{}{}".format(current_file, args.separator, change_context)
+                    )
 
         try:
             line = input()
@@ -52,14 +54,23 @@ def main():
 
 def argument_parser():
     parser = argparse.ArgumentParser(description=DESCRIPTION, epilog=USAGE_EXAMPLE)
-    parser.add_argument('--no-files', dest='files', action='store_false',
-                        help='Do not list files')
-    parser.add_argument('--no-change-context', dest='change_context', action='store_false',
-                        help='Do not list change contexts')
-    parser.add_argument('--separator', dest='separator', default=DEFAULT_CONTEXT_SEPARATOR,
-                        help='Context separator string used between file name and context')
+    parser.add_argument(
+        "--no-files", dest="files", action="store_false", help="Do not list files"
+    )
+    parser.add_argument(
+        "--no-change-context",
+        dest="change_context",
+        action="store_false",
+        help="Do not list change contexts",
+    )
+    parser.add_argument(
+        "--separator",
+        dest="separator",
+        default=DEFAULT_CONTEXT_SEPARATOR,
+        help="Context separator string used between file name and context",
+    )
     return parser
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

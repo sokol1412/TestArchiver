@@ -7,7 +7,7 @@ from test_archiver.output_parser import (
     JUnitOutputParser,
     MochaJUnitOutputParser,
     PytestJUnitOutputParser,
-    MSTestOutputParser
+    MSTestOutputParser,
 )
 
 
@@ -16,6 +16,7 @@ def mock_archiver():
     mock_db = Mock()
     config = configs.Config(file_config={})
     return archiver.Archiver(mock_db, config)
+
 
 @pytest.fixture
 def xunit(mock_archiver):

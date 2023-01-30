@@ -6,23 +6,37 @@
 
 from . import archiver, configs
 
+
 class ArchiverRobotListener:
     ROBOT_LISTENER_API_VERSION = 2
 
-    def __init__(self, config_file_or_database,
-                 db_engine=None, user=None, pw=None, host=None, port=5432, adjust_with_system_timezone=False):
+    def __init__(
+        self,
+        config_file_or_database,
+        schema=None,
+        db_engine=None,
+        user=None,
+        pw=None,
+        host=None,
+        port=5432,
+        adjust_with_system_timezone=False,
+    ):
         config = configs.Config()
         if not db_engine:
             config.resolve(file_config=config_file_or_database)
         else:
-            config.resolve(file_config={
-                'database': config_file_or_database,
-                'db_engine': db_engine,
-                'user': user,
-                'password': pw,
-                'host': host,
-                'port': port,
-                'time_adjust_with_system_timezone': adjust_with_system_timezone})
+            config.resolve(
+                file_config={
+                    "database": config_file_or_database,
+                    "schema": schema,
+                    "db_engine": db_engine,
+                    "user": user,
+                    "password": pw,
+                    "host": host,
+                    "port": port,
+                    "time_adjust_with_system_timezone": adjust_with_system_timezone,
+                }
+            )
 
         database = archiver.database_connection(config)
         self.archiver = archiver.Archiver(database, config)
@@ -33,11 +47,9 @@ class ArchiverRobotListener:
 
     def start_suite(self, name, attrs):
         if not self.archiver.test_run_id:
-            self.archiver.begin_test_run('ArchiverListener',
-                                         None,
-                                         self.generator,
-                                         self.rpa,
-                                         self.dry_run)
+            self.archiver.begin_test_run(
+                "ArchiverListener", None, self.generator, self.rpa, self.dry_run
+            )
         self.archiver.begin_suite(name)
 
     def end_suite(self, name, attrs):
@@ -50,32 +62,38 @@ class ArchiverRobotListener:
         self.archiver.end_test(attrs)
 
     def start_keyword(self, name, attrs):
-        kw_type = attrs['type']
-        contol_structure = kw_type.lower() in ('if', 'else if', 'else', 'for', 'for iteration')
-        name = attrs['type'] if contol_structure else attrs['kwname']
-        library = attrs['libname']
-        arguments = [attrs['kwname']] if contol_structure else attrs['args']
-        arguments = [] if len(arguments) == 1 and arguments[0] == '' else arguments
+        kw_type = attrs["type"]
+        contol_structure = kw_type.lower() in (
+            "if",
+            "else if",
+            "else",
+            "for",
+            "for iteration",
+        )
+        name = attrs["type"] if contol_structure else attrs["kwname"]
+        library = attrs["libname"]
+        arguments = [attrs["kwname"]] if contol_structure else attrs["args"]
+        arguments = [] if len(arguments) == 1 and arguments[0] == "" else arguments
         self.archiver.begin_keyword(name, library, kw_type, arguments)
 
     def end_keyword(self, name, attrs):
         self.archiver.end_keyword(attrs)
 
     def log_message(self, message):
-        self.archiver.begin_log_message(message['level'], message['timestamp'])
-        self.archiver.end_log_message(message['message'])
+        self.archiver.begin_log_message(message["level"], message["timestamp"])
+        self.archiver.end_log_message(message["message"])
 
     def message(self, message):
         if not self.generator:
-            self.generator = message['message']
-        elif message['message'].startswith('Settings:'):
-            self.process_settings(message['message'])
+            self.generator = message["message"]
+        elif message["message"].startswith("Settings:"):
+            self.process_settings(message["message"])
 
     def process_settings(self, settings):
-        settings = dict([row.split(':', 1) for row in settings.split('\n')])
+        settings = dict([row.split(":", 1) for row in settings.split("\n")])
 
-        self.rpa = bool('RPA' in settings and settings['RPA'].strip() == 'True')
-        self.dry_run = bool(settings['DryRun'].strip() == 'True')
+        self.rpa = bool("RPA" in settings and settings["RPA"].strip() == "True")
+        self.dry_run = bool(settings["DryRun"].strip() == "True")
 
     def close(self):
         self.archiver.end_test_run()

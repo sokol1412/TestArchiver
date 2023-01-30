@@ -69,6 +69,7 @@ def build_metadata(series, build_num):
 def test_run_metadata(test_run_id):
     return METADATA.format(test_run_ids=int(test_run_id))
 
+
 def test_run_data(test_run_id):
     return """
 SELECT test_run.id, imported_at, archived_using, archiver_version,
@@ -78,7 +79,10 @@ FROM test_run
 JOIN suite_result ON suite_result.test_run_id=test_run.id
 WHERE test_run.id={}
 GROUP BY test_run.id, imported_at, archived_using, generator, generated, rpa, dryrun, ignored
-""".format(int(test_run_id))
+""".format(
+        int(test_run_id)
+    )
+
 
 def builds(series, build_num, last, offset):
     if build_num:
@@ -86,7 +90,9 @@ def builds(series, build_num, last, offset):
         last_limits = ""
     else:
         build_number_filter = ""
-        last_limits = "LIMIT {last} OFFSET {offset}".format(last=int(last), offset=int(offset))
+        last_limits = "LIMIT {last} OFFSET {offset}".format(
+            last=int(last), offset=int(offset)
+        )
     return """
 SELECT build_number, array_agg(test_run_id) as test_run_ids,
         min(started_at) as started_at
@@ -102,7 +108,11 @@ FROM (
 GROUP BY build_number
 ORDER BY build_number DESC
 {last_limits}
-""".format(series=int(series), build_number_filter=build_number_filter, last_limits=last_limits)
+""".format(
+        series=int(series),
+        build_number_filter=build_number_filter,
+        last_limits=last_limits,
+    )
 
 
 def latest_build_numbers(series, last, offset):
@@ -128,7 +138,11 @@ def test_run_ids(series=None, build_num=None, last=None, offset=None):
         if build_num:
             filters.append("build_number={}".format(int(build_num)))
         elif last:
-            filters.append("build_number IN ({})".format(latest_build_numbers(series, last, offset)))
+            filters.append(
+                "build_number IN ({})".format(
+                    latest_build_numbers(series, last, offset)
+                )
+            )
 
     return """
 SELECT test_run_id
@@ -137,7 +151,9 @@ JOIN test_run ON test_run.id=tsm.test_run_id
 WHERE NOT ignored
 {filters}
 ORDER BY build_number, test_run_id
-""".format(filters='AND ' + ' AND '.join(filters) if filters else '')
+""".format(
+        filters="AND " + " AND ".join(filters) if filters else ""
+    )
 
 
 RESULTS_QUERY = """
@@ -203,11 +219,13 @@ ORDER BY suite_full_name, start_time NULLS LAST, full_name
 
 
 def build_results(series, build_num):
-    return RESULTS_QUERY.format(array_literal='{}', test_run_ids=test_run_ids(series, build_num))
+    return RESULTS_QUERY.format(
+        array_literal="{}", test_run_ids=test_run_ids(series, build_num)
+    )
 
 
 def test_run_results(test_run_id):
-    return RESULTS_QUERY.format(array_literal='{}', test_run_ids=int(test_run_id))
+    return RESULTS_QUERY.format(array_literal="{}", test_run_ids=int(test_run_id))
 
 
 def single_test_result(test_run_id, test_id):
@@ -262,14 +280,20 @@ WHERE test_result.test_run_id={test_run_id}
   AND test_result.test_id={test_id}
   AND suite_result.test_run_id={test_run_id}
   AND NOT ignored
-""".format(test_run_id=int(test_run_id), test_id=int(test_id), array_literal='{}')
+""".format(
+        test_run_id=int(test_run_id), test_id=int(test_id), array_literal="{}"
+    )
+
 
 def _parent_suite_full_name(test_id):
     return """
 SELECT full_name
 FROM suite
 WHERE id=(SELECT suite_id FROM test_case WHERE id={test_id})
-""".format(test_id=int(test_id))
+""".format(
+        test_id=int(test_id)
+    )
+
 
 def parent_suite_results(test_run_id, test_id):
     return """
@@ -299,6 +323,7 @@ ORDER BY suite_start_time NULLS LAST, suite_full_name""".format(
         parent_suite_full_name=_parent_suite_full_name(test_id),
     )
 
+
 def included_in_builds(test_run_id):
     return """
 SELECT test_series.id as series, name, team, test_series_mapping.build_number,
@@ -315,7 +340,9 @@ JOIN suite_result ON suite_result.test_run_id=test_series_mapping.test_run_id
 WHERE test_series_mapping.test_run_id={}
 GROUP BY test_series.id, name, team, test_series_mapping.build_number, test_run_ids
 ORDER BY team, name, test_series_mapping.build_number DESC
-""".format(int(test_run_id))
+""".format(
+        int(test_run_id)
+    )
 
 
 def status_ratios(object_type, series, last, offset, build_num, per_build):
@@ -325,14 +352,16 @@ def status_ratios(object_type, series, last, offset, build_num, per_build):
         filters.append(
             " tsm.test_run_id IN ({test_run_ids})".format(
                 test_run_ids=test_run_ids(series, build_num, last, offset),
-                )
+            )
         )
-    target_table = ''
-    if object_type == 'test':
+    target_table = ""
+    if object_type == "test":
         target_table = "FROM test_result as result"
-    elif object_type == 'suite':
-        target_table = ("FROM suite_result as result JOIN suite ON suite.id=result.suite_id "
-                        "AND suite.id IN (SELECT suite_id FROM test_case)")
+    elif object_type == "suite":
+        target_table = (
+            "FROM suite_result as result JOIN suite ON suite.id=result.suite_id "
+            "AND suite.id IN (SELECT suite_id FROM test_case)"
+        )
     return """
 SELECT max(build_number) as build, series,
     count(*) as total,
@@ -348,9 +377,11 @@ WHERE NOT ignored {filters}
 {ordering}
 """.format(
         target_table=target_table,
-        filters="AND " + ' AND '.join(filters) if filters else '',
+        filters="AND " + " AND ".join(filters) if filters else "",
         grouping="GROUP BY series, build_number" if per_build else "GROUP BY series",
-        ordering="ORDER BY series, build_number DESC" if per_build else "ORDER BY series",
+        ordering="ORDER BY series, build_number DESC"
+        if per_build
+        else "ORDER BY series",
     )
 
 
@@ -428,6 +459,7 @@ ORDER BY calls desc;
         fingerprint=fingerprint,
     )
 
+
 def log_messages(test_run_id):
     return """
 SELECT test_run_id, test_id, suite_id,
@@ -435,10 +467,14 @@ SELECT test_run_id, test_id, suite_id,
 FROM log_message
 WHERE test_run_id={test_run_id}
 ORDER BY timestamp, id
-""".format(test_run_id=int(test_run_id))
+""".format(
+        test_run_id=int(test_run_id)
+    )
 
-if __name__ == '__main__':
-    print(status_ratios('test', 8, 40, 10, 0, True))
+
+if __name__ == "__main__":
+    print(status_ratios("test", 8, 40, 10, 0, True))
+
 
 def builds_by_time(series, build_num, last, offset, searchTimeStart, searchTimeEnd):
     if build_num:
@@ -446,7 +482,9 @@ def builds_by_time(series, build_num, last, offset, searchTimeStart, searchTimeE
         last_limits = ""
     else:
         build_number_filter = ""
-        last_limits = "LIMIT {last} OFFSET {offset}".format(last=int(last), offset=int(offset))
+        last_limits = "LIMIT {last} OFFSET {offset}".format(
+            last=int(last), offset=int(offset)
+        )
     return """
 SELECT build_number, array_agg(test_run_id) as test_run_ids,
         min(started_at) as started_at
@@ -462,4 +500,10 @@ FROM (
 GROUP BY build_number
 ORDER BY build_number DESC
 {last_limits}
-""".format(series=int(series), build_number_filter=build_number_filter, last_limits=last_limits, searchTimeStart=searchTimeStart, searchTimeEnd=searchTimeEnd)
+""".format(
+        series=int(series),
+        build_number_filter=build_number_filter,
+        last_limits=last_limits,
+        searchTimeStart=searchTimeStart,
+        searchTimeEnd=searchTimeEnd,
+    )

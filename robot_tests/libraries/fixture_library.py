@@ -1,7 +1,6 @@
-
 class Interactions(object):
 
-    ROBOT_LIBRARY_SCOPE = 'TEST SUITE'
+    ROBOT_LIBRARY_SCOPE = "TEST SUITE"
 
     def __init__(self):
         self.mode = None
