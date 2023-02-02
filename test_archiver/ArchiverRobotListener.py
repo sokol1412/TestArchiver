@@ -19,6 +19,7 @@ class ArchiverRobotListener:
         pw=None,
         host=None,
         port=5432,
+        execution_id=None,
         adjust_with_system_timezone=False,
     ):
         config = configs.Config()
@@ -44,13 +45,23 @@ class ArchiverRobotListener:
         self.rpa = False
         self.dry_run = False
         self.generator = None
+        self.execution_id = execution_id
 
     def start_suite(self, name, attrs):
         if not self.archiver.test_run_id:
             self.archiver.begin_test_run(
-                "ArchiverListener", None, self.generator, self.rpa, self.dry_run
+                self.execution_id, None, self.generator, self.rpa, self.dry_run
             )
         self.archiver.begin_suite(name)
+        if attrs['tests']:
+            sut: archiver.Suite = self.archiver.begin_suite(name)
+            sut.insert_results()
+            for test in attrs['tests']:
+                tc: archiver.Test = self.archiver.create_test(test)
+                tc.status = "NOT_RUN"
+                tc.execution_status = 'NOT_RUN'
+                tc.insert_results()
+                
 
     def end_suite(self, name, attrs):
         self.archiver.end_suite(attrs)
