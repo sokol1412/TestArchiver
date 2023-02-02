@@ -318,10 +318,45 @@ class Suite(FingerprintedItem):
             "test_run_id": self.test_run_id(),
             "execution_path": self.execution_path(),
         }
+        self.status = "RUNNING"
+        self.execution_status = "RUNNING"
         data.update(self.status_and_fingerprint_values())
+        try:
+            self.archiver.db.insert("suite_result", data)
+        except database.IntegrityError:
+            print(
+                "ERROR: database.IntegrityError: these results have already been archived!"
+            )
+            sys.exit(1)
+
+    def finish(self):
+        self.execution_path()  # Make sure this is called before exiting any item
+        self.handle_child_statuses()
+        if not self.status:
+            if self.execution_status:
+                self.status = self.execution_status
+            else:
+                self.status = "PASS"
+        if not self.elapsed_time:
+            self.elapsed_time = (
+                self.elapsed_time_setup
+                if self.elapsed_time_setup
+                else 0 + self.elapsed_time_execution
+                if self.elapsed_time_execution
+                else 0 + self.elapsed_time_teardown
+                if self.elapsed_time_teardown
+                else 0
+            )
+        self.calculate_fingerprints()
+        self.propagate_fingerprints_status_and_elapsed_time()
+        self.update_results()
+
+    def update_results(self):
+        data = self.status_and_fingerprint_values()
         if self.id not in self.parent_item.child_suite_ids:
             try:
-                self.archiver.db.insert("suite_result", data)
+                key_values = {"suite_id": self.id, "test_run_id": self.test_run_id()}
+                self.archiver.db.update("suite_result", data, key_values)
             except database.IntegrityError:
                 print(
                     "ERROR: database.IntegrityError: these results have already been archived!"
@@ -397,8 +432,53 @@ class Test(FingerprintedItem):
     @staticmethod
     def _execution_path_identifier():
         return "t"
+    
+    def finish(self):
+        self.execution_path()  # Make sure this is called before exiting any item
+        self.handle_child_statuses()
+        if not self.status:
+            if self.execution_status:
+                self.status = self.execution_status
+            else:
+                self.status = "PASS"
+        if not self.elapsed_time:
+            self.elapsed_time = (
+                self.elapsed_time_setup
+                if self.elapsed_time_setup
+                else 0 + self.elapsed_time_execution
+                if self.elapsed_time_execution
+                else 0 + self.elapsed_time_teardown
+                if self.elapsed_time_teardown
+                else 0
+            )
+        self.calculate_fingerprints()
+        self.propagate_fingerprints_status_and_elapsed_time()
+        self.update_results()
+
 
     def insert_results(self):
+        data = {
+            "test_id": self.id,
+            "test_run_id": self.test_run_id(),
+            "critical": self.critical,
+            "status": self.status,
+            "execution_path": self.execution_path(),
+        }
+        try:
+            self.archiver.db.insert("test_result", data)
+        except database.IntegrityError:
+            print(
+                "ERROR: database.IntegrityError: these results have already been archived!"
+            )
+            sys.exit(1)
+
+
+    def update_running_status(self):
+        data = self.status_and_fingerprint_values()
+        key_values = {"test_id": self.id, "test_run_id": self.test_run_id()}
+        self.archiver.db.update("test_result", data, key_values)
+
+    def update_results(self): 
         if self.id not in self.parent_item.child_test_ids:
             data = {
                 "test_id": self.id,
@@ -407,7 +487,8 @@ class Test(FingerprintedItem):
                 "execution_path": self.execution_path(),
             }
             data.update(self.status_and_fingerprint_values())
-            self.archiver.db.insert("test_result", data)
+            key_values = {"test_id": self.id, "test_run_id": self.test_run_id()}
+            self.archiver.db.update("test_result", data, key_values)
             if self.subtree_fingerprints and self.archiver.config.archive_keywords:
                 data = {
                     "fingerprint": self.execution_fingerprint,
@@ -738,6 +819,12 @@ class Archiver:
         test = Test(self, name, class_name)
         test.set_execution_path(execution_path)
         self.stack.append(test)
+        test.status = 'RUNNING'
+        test.update_running_status()
+        return test
+    
+    def create_test(self, name, class_name=None, execution_path=None):
+        test = Test(self, name, class_name)
         return test
 
     def end_test(self, attributes=None):
