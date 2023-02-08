@@ -50,7 +50,7 @@ class RobotFrameworkOutputParser(XmlOutputParser):
             self.skipping_content = True
         elif name == "robot":
             self.archiver.begin_test_run(
-                "RF parser",
+                self.archiver.config.execution_id,
                 attrs.get("generated"),
                 attrs.get("generator"),
                 attrs.get("rpa") if "rpa" in attrs.getNames() else False,
