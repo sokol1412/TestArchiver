@@ -58,8 +58,10 @@ class RobotFrameworkOutputParser(XmlOutputParser):
             )
         elif name == "suite":
             execution_path = attrs.getValue("id") if "id" in attrs.getNames() else None
+            print(attrs.getNames())
+            tests = attrs.getValue("tests") if "tests" in attrs.getNames() else None
             self.archiver.begin_suite(
-                attrs.getValue("name"), attributes=attrs, execution_path=execution_path
+                attrs.getValue("name"), tests=tests, execution_path=execution_path
             )
         elif name == "test":
             execution_path = attrs.getValue("id") if "id" in attrs.getNames() else None

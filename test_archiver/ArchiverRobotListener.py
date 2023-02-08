@@ -52,7 +52,8 @@ class ArchiverRobotListener:
             self.archiver.begin_test_run(
                 self.execution_id, None, self.generator, self.rpa, self.dry_run
             )
-        self.archiver.begin_suite(name, attrs)
+        tests = attrs['tests'] if 'tests' in attrs else None
+        self.archiver.begin_suite(name, tests)
 
     def end_suite(self, name, attrs):
         self.archiver.end_suite(attrs)
