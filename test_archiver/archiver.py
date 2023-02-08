@@ -798,10 +798,18 @@ class Archiver:
             build_number = previous_build_number + 1 if previous_build_number else 1
         return build_number
 
-    def begin_suite(self, name, execution_path=None):
+    def begin_suite(self, name, attributes=None, execution_path=None):
         suite = Suite(self, name, "repo")
         suite.set_execution_path(execution_path)
         self.stack.append(suite)
+        if attributes['tests']:
+            sut: Suite = self.begin_suite(name)
+            sut.insert_results()
+            for test in attributes['tests']:
+                tc: Test = self.create_test(test)
+                tc.status = "NOT_RUN"
+                tc.execution_status = 'NOT_RUN'
+                tc.insert_results()
         return suite
 
     def end_suite(self, attributes=None):
