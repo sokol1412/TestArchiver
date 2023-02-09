@@ -58,14 +58,12 @@ class RobotFrameworkOutputParser(XmlOutputParser):
             )
         elif name == "suite":
             execution_path = attrs.getValue("id") if "id" in attrs.getNames() else None
-            print(attrs.getNames())
-            tests = attrs.getValue("tests") if "tests" in attrs.getNames() else None
-            self.archiver.begin_suite(
-                attrs.getValue("name"), tests=tests, execution_path=execution_path
+            self.archiver.begin_suite_xml(
+                attrs.getValue("name"), execution_path=execution_path
             )
         elif name == "test":
             execution_path = attrs.getValue("id") if "id" in attrs.getNames() else None
-            self.archiver.begin_test(
+            self.archiver.begin_test_xml(
                 attrs.getValue("name"), execution_path=execution_path
             )
         elif name == "kw":
@@ -136,9 +134,9 @@ class RobotFrameworkOutputParser(XmlOutputParser):
         elif name == "robot":
             self.archiver.update_dryrun_status()
         elif name == "suite":
-            self.archiver.end_suite()
+            self.archiver.end_suite_xml()
         elif name == "test":
-            self.archiver.end_test()
+            self.archiver.end_test_xml()
         elif name == "kw":
             self.archiver.end_keyword()
         elif name == "for":
