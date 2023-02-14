@@ -641,6 +641,7 @@ class Keyword(FingerprintedItem):
                 "library": self.library,
                 "status": self.status,
                 "arguments": self.arguments,
+                "execution_path": self.execution_path()
             }
             self.archiver.db.insert_or_ignore("keyword_tree", data, ["fingerprint"])
             self.insert_subtrees()
@@ -986,8 +987,9 @@ class Archiver:
     def update_status(self, status):
         self.current_item().status = status
 
-    def begin_keyword(self, name, library, kw_type, arguments=None):
+    def begin_keyword(self, name, library, kw_type, arguments=None, execution_path=None):
         keyword = Keyword(self, name, library, kw_type.lower(), arguments)
+        keyword.set_execution_path(execution_path)
         self.stack.append(keyword)
         return keyword
 

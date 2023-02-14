@@ -67,12 +67,13 @@ class RobotFrameworkOutputParser(XmlOutputParser):
                 attrs.getValue("name"), execution_path=execution_path
             )
         elif name == "kw":
+            execution_path = attrs.getValue("id") if "id" in attrs.getNames() else None
             name = attrs.getValue("name") if "name" in attrs.getNames() else ""
             kw_type = (
                 attrs.getValue("type") if "type" in attrs.getNames() else "Keyword"
             )
             library = attrs.getValue("library") if "library" in attrs.getNames() else ""
-            self.archiver.begin_keyword(name, library, kw_type)
+            self.archiver.begin_keyword(name, library, kw_type, execution_path=execution_path)
         elif name == "for":
             self.archiver.begin_keyword("FOR", "", "FOR")
             self.archiver.update_arguments(attrs.getValue("flavor"))
