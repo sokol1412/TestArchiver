@@ -180,6 +180,7 @@ class FingerprintedItem(TestItem):
         fingerprint.update(str(self.teardown_fingerprint).encode("utf-8"))
         fingerprint.update(str(self.status).encode("utf-8"))
         fingerprint.update(str(self.arguments).encode("utf-8"))
+        fingerprint.update(str(self._execution_path).encode("utf-8"))
         self.fingerprint = fingerprint.hexdigest()
 
     def handle_child_statuses(self):
@@ -579,26 +580,26 @@ class TestXML(Test):
         super(TestXML, self).__init__(archiver, name, class_name)
 
     def finish(self):
-            self.execution_path()  # Make sure this is called before exiting any item
-            self.handle_child_statuses()
-            if not self.status:
-                if self.execution_status:
-                    self.status = self.execution_status
-                else:
-                    self.status = "PASS"
-            if not self.elapsed_time:
-                self.elapsed_time = (
-                    self.elapsed_time_setup
-                    if self.elapsed_time_setup
-                    else 0 + self.elapsed_time_execution
-                    if self.elapsed_time_execution
-                    else 0 + self.elapsed_time_teardown
-                    if self.elapsed_time_teardown
-                    else 0
-                )
-            self.calculate_fingerprints()
-            self.propagate_fingerprints_status_and_elapsed_time()
-            self.insert_results()
+        self.execution_path()  # Make sure this is called before exiting any item
+        self.handle_child_statuses()
+        if not self.status:
+            if self.execution_status:
+                self.status = self.execution_status
+            else:
+                self.status = "PASS"
+        if not self.elapsed_time:
+            self.elapsed_time = (
+                self.elapsed_time_setup
+                if self.elapsed_time_setup
+                else 0 + self.elapsed_time_execution
+                if self.elapsed_time_execution
+                else 0 + self.elapsed_time_teardown
+                if self.elapsed_time_teardown
+                else 0
+            )
+        self.calculate_fingerprints()
+        self.propagate_fingerprints_status_and_elapsed_time()
+        self.insert_results()
 
     def insert_results(self):
         if self.id not in self.parent_item.child_test_ids:
