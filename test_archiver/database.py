@@ -31,7 +31,10 @@ def get_connection_and_check_schema(config):
             )
         connection = SQLiteDatabase(config)
     if connection:
-        connection.check_and_update_schema()
+        try:
+            connection.check_and_update_schema()
+        except:
+            print("ERROR: Cannot check and update schema for connection!")
         return connection
     raise Exception("Unsupported database type '{}'".format(config.db_engine))
 
@@ -190,7 +193,6 @@ class BaseDatabase:
 
 
 class PostgresqlDatabase(BaseDatabase):
-
     UndefinedTableError = psycopg2.errors.UndefinedTable if psycopg2 else None
 
     def _db_engine_identifier(self):
@@ -206,15 +208,30 @@ class PostgresqlDatabase(BaseDatabase):
         if self.schema:
             options = f"-c search_path={self.schema}"
 
-        self._connection = psycopg2.connect(
-            host=self.host,
-            port=self.port,
-            database=self.database,
-            user=self.user,
-            password=self.password,
-            sslmode="require" if self.require_ssl else "prefer",
-            options=options,
-        )
+        ssl_mode = "require" if self.require_ssl else "prefer"
+
+        try:
+            self._connection = psycopg2.connect(
+                host=self.host,
+                port=self.port,
+                database=self.database,
+                user=self.user,
+                password=self.password,
+                sslmode=ssl_mode,
+                options=options,
+            )
+        except:
+            print(f"ERROR: Cannot setup test_archiver.ArchiverRobotListener!")
+            print(
+                f"""ERROR: Could connect to database with provided parameters:
+                      host: {self.host}
+                      port: {self.port}
+                      database: {self.database}
+                      user: {self.user}
+                      password: #############################HIDDEN_DUE_TO_SECURITY_REASONS#############################
+                      ssl_mode: {ssl_mode}
+                      options: {options}"""
+            )
 
     def _initialize_schema(self):
         try:

@@ -417,6 +417,7 @@ class Suite(FingerprintedItem):
         if value:
             self.metadata[self._last_metadata_name] = value
 
+
 class SuiteXML(Suite):
     def __init__(self, archiver, name, repository):
         super(SuiteXML, self).__init__(archiver, name, repository)
@@ -444,14 +445,19 @@ class SuiteXML(Suite):
         self.insert_results()
 
     def insert_results(self):
-        data = {'suite_id': self.id, 'test_run_id': self.test_run_id(),
-                'execution_path': self.execution_path()}
+        data = {
+            "suite_id": self.id,
+            "test_run_id": self.test_run_id(),
+            "execution_path": self.execution_path(),
+        }
         data.update(self.status_and_fingerprint_values())
         if self.id not in self.parent_item.child_suite_ids:
             try:
-                self.archiver.db.insert('suite_result', data)
+                self.archiver.db.insert("suite_result", data)
             except database.IntegrityError:
-                print("ERROR: database.IntegrityError: these results have already been archived!")
+                print(
+                    "ERROR: database.IntegrityError: these results have already been archived!"
+                )
                 sys.exit(1)
             self.insert_metadata()
             if self.failed_by_teardown:
@@ -462,8 +468,11 @@ class SuiteXML(Suite):
                 self.parent_item.child_test_ids.extend(self.child_test_ids)
 
         else:
-            print("WARNING: duplicate results for suite '{}' are ignored".format(self.full_name))
-
+            print(
+                "WARNING: duplicate results for suite '{}' are ignored".format(
+                    self.full_name
+                )
+            )
 
 
 class Test(FingerprintedItem):
@@ -481,7 +490,7 @@ class Test(FingerprintedItem):
     @staticmethod
     def _execution_path_identifier():
         return "t"
-    
+
     def finish(self):
         self.execution_path()  # Make sure this is called before exiting any item
         self.handle_child_statuses()
@@ -504,7 +513,6 @@ class Test(FingerprintedItem):
         self.propagate_fingerprints_status_and_elapsed_time()
         self.update_results()
 
-
     def insert_results(self):
         data = {
             "test_id": self.id,
@@ -521,13 +529,12 @@ class Test(FingerprintedItem):
             )
             sys.exit(1)
 
-
     def update_running_status(self):
         data = self.status_and_fingerprint_values()
         key_values = {"test_id": self.id, "test_run_id": self.test_run_id()}
         self.archiver.db.update("test_result", data, key_values)
 
-    def update_results(self): 
+    def update_results(self):
         if self.id not in self.parent_item.child_test_ids:
             data = {
                 "test_id": self.id,
@@ -575,6 +582,7 @@ class Test(FingerprintedItem):
             self.archiver.db.insert_or_ignore("tree_hierarchy", data, key_values)
             call_index += 1
 
+
 class TestXML(Test):
     def __init__(self, archiver, name, class_name):
         super(TestXML, self).__init__(archiver, name, class_name)
@@ -603,20 +611,33 @@ class TestXML(Test):
 
     def insert_results(self):
         if self.id not in self.parent_item.child_test_ids:
-            data = {'test_id': self.id, 'test_run_id': self.test_run_id(), 'critical': self.critical,
-                    'execution_path': self.execution_path()}
+            data = {
+                "test_id": self.id,
+                "test_run_id": self.test_run_id(),
+                "critical": self.critical,
+                "execution_path": self.execution_path(),
+            }
             data.update(self.status_and_fingerprint_values())
-            self.archiver.db.insert('test_result', data)
+            self.archiver.db.insert("test_result", data)
             if self.subtree_fingerprints and self.archiver.config.archive_keywords:
-                data = {'fingerprint': self.execution_fingerprint, 'keyword': None, 'library': None,
-                        'status': self.execution_status, 'arguments': self.arguments}
-                self.archiver.db.insert_or_ignore('keyword_tree', data, ['fingerprint'])
+                data = {
+                    "fingerprint": self.execution_fingerprint,
+                    "keyword": None,
+                    "library": None,
+                    "status": self.execution_status,
+                    "arguments": self.arguments,
+                }
+                self.archiver.db.insert_or_ignore("keyword_tree", data, ["fingerprint"])
             if self.archiver.config.archive_keywords:
                 self.insert_subtrees()
             self.insert_tags()
             self.parent_item.child_test_ids.append(self.id)
         else:
-            print("WARNING: duplicate results for test '{}' are ignored".format(self.full_name))
+            print(
+                "WARNING: duplicate results for test '{}' are ignored".format(
+                    self.full_name
+                )
+            )
 
 
 class Keyword(FingerprintedItem):
@@ -642,7 +663,7 @@ class Keyword(FingerprintedItem):
                 "library": self.library,
                 "status": self.status,
                 "arguments": self.arguments,
-                "execution_path": self.execution_path()
+                "execution_path": self.execution_path(),
             }
             self.archiver.db.insert_or_ignore("keyword_tree", data, ["fingerprint"])
             self.insert_subtrees()
@@ -783,9 +804,6 @@ class Archiver:
         item = self.stack[-1] if self.stack else None
         if expected_type:
             if not isinstance(item, expected_type):
-                print("PARSING ERROR - printing current stack:")
-                for item in self.stack:
-                    print(item.__class__.__name__)
                 raise Exception(
                     "Expected to have '{}' but had '{}' currently in stack".format(
                         expected_type, item.__class__.__name__
@@ -901,12 +919,12 @@ class Archiver:
             for test in tests:
                 tc: Test = self.create_test(test)
                 tc.status = "NOT_RUN"
-                tc.execution_status = 'NOT_RUN'
+                tc.execution_status = "NOT_RUN"
                 tc.insert_results()
         return suite
 
     def begin_suite_xml(self, name, execution_path=None):
-        suite = SuiteXML(self, name, 'repo')
+        suite = SuiteXML(self, name, "repo")
         suite.set_execution_path(execution_path)
         self.stack.append(suite)
         return suite
@@ -924,9 +942,10 @@ class Archiver:
 
     def end_suite_xml(self, attributes=None):
         if attributes:
-            self.current_item(SuiteXML).update_status(attributes['status'], attributes['starttime'],
-                                                   attributes['endtime'])
-            self.current_item(SuiteXML).metadata = attributes['metadata']
+            self.current_item(SuiteXML).update_status(
+                attributes["status"], attributes["starttime"], attributes["endtime"]
+            )
+            self.current_item(SuiteXML).metadata = attributes["metadata"]
         self.current_item(SuiteXML).finish()
         suite = self.stack.pop()
         for listener in self.listeners:
@@ -936,10 +955,10 @@ class Archiver:
         test = Test(self, name, class_name)
         test.set_execution_path(execution_path)
         self.stack.append(test)
-        test.status = 'RUNNING'
+        test.status = "RUNNING"
         test.update_running_status()
         return test
-    
+
     def create_test(self, name, class_name=None, execution_path=None):
         test = Test(self, name, class_name)
         return test
@@ -969,10 +988,16 @@ class Archiver:
 
     def end_test_xml(self, attributes=None):
         if attributes:
-            critical = attributes['critical'] == 'yes' if 'critical' in attributes else None
-            self.current_item(TestXML).update_status(attributes['status'], attributes['starttime'],
-                                                  attributes['endtime'], critical=critical)
-            self.current_item(TestXML).tags = attributes['tags']
+            critical = (
+                attributes["critical"] == "yes" if "critical" in attributes else None
+            )
+            self.current_item(TestXML).update_status(
+                attributes["status"],
+                attributes["starttime"],
+                attributes["endtime"],
+                critical=critical,
+            )
+            self.current_item(TestXML).tags = attributes["tags"]
         self.current_item(TestXML).finish()
         test = self.stack.pop()
         for listener in self.listeners:
@@ -988,7 +1013,9 @@ class Archiver:
     def update_status(self, status):
         self.current_item().status = status
 
-    def begin_keyword(self, name, library, kw_type, arguments=None, execution_path=None):
+    def begin_keyword(
+        self, name, library, kw_type, arguments=None, execution_path=None
+    ):
         keyword = Keyword(self, name, library, kw_type.lower(), arguments)
         keyword.set_execution_path(execution_path)
         self.stack.append(keyword)

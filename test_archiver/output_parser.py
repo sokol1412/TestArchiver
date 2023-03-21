@@ -73,7 +73,9 @@ class RobotFrameworkOutputParser(XmlOutputParser):
                 attrs.getValue("type") if "type" in attrs.getNames() else "Keyword"
             )
             library = attrs.getValue("library") if "library" in attrs.getNames() else ""
-            self.archiver.begin_keyword(name, library, kw_type, execution_path=execution_path)
+            self.archiver.begin_keyword(
+                name, library, kw_type, execution_path=execution_path
+            )
         elif name == "for":
             self.archiver.begin_keyword("FOR", "", "FOR")
             self.archiver.update_arguments(attrs.getValue("flavor"))
