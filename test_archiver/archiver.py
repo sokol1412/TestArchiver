@@ -719,6 +719,8 @@ class Keyword(FingerprintedItem):
                 "cumulative_execution_time": self.elapsed_time,
                 "max_call_depth": self.kw_call_depth,
             }
+        if self.archiver.config.archive_keywords and self.archiver.config.archive_keyword_statistics:
+            self.archiver.db.insert("keyword_statistics", self.archiver.keyword_statistics[self.fingerprint])
 
 
 class LogMessage(TestItem):
@@ -860,8 +862,6 @@ class Archiver:
         if not self.test_series:
             self.report_series("default series", None)
         self.report_series("All builds", None)
-        if self.config.archive_keywords and self.config.archive_keyword_statistics:
-            self.report_keyword_statistics()
 
         self.db.commit()
         for listener in self.listeners:
