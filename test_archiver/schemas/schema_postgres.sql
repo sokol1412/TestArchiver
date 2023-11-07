@@ -134,3 +134,15 @@ CREATE TABLE keyword_statistics (
     max_call_depth int,
     PRIMARY KEY (test_run_id, fingerprint)
 );
+CREATE TABLE robot_live_results.running_parent_keywords (
+    test_run_id int,
+    suite_id int,
+    test_id int,
+    execution_path text,
+    keyword text,
+    keyword_type text,
+    keyword_order int,
+    library text,
+    status text,
+    arguments text [],
+    PRIMARY KEY(test_run_id, suite_id, test_id, execution_path));

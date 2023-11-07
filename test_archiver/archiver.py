@@ -478,6 +478,7 @@ class SuiteXML(Suite):
 class Test(FingerprintedItem):
     def __init__(self, archiver, name, class_name):
         super(Test, self).__init__(archiver, name, class_name)
+        self.execution_keyword_order = 1
         data = {
             "full_name": self.full_name,
             "name": name,
@@ -512,6 +513,16 @@ class Test(FingerprintedItem):
         self.calculate_fingerprints()
         self.propagate_fingerprints_status_and_elapsed_time()
         self.update_results()
+        # Remove running keywords data from DB as test is finished and we don't need it anymore so we can save some space in database
+        self.remove_running_parent_keywords_data()
+
+    def remove_running_parent_keywords_data(self):
+        if self.archiver.config.archive_keywords:
+            test_run_id = self.test_run_id()
+            suite_id = self.parent_item.id
+            test_id = self.id
+            key_values = {"test_run_id": test_run_id, "suite_id": suite_id, "test_id": test_id}
+            self.archiver.db.delete("running_parent_keywords", key_values)
 
     def insert_results(self):
         data = {
@@ -571,7 +582,7 @@ class Test(FingerprintedItem):
             self.archiver.db.insert("test_tag", data)
 
     def insert_subtrees(self):
-        call_index = 0
+        call_index = 1
         for subtree in self.subtree_fingerprints:
             data = {
                 "fingerprint": self.execution_fingerprint,
@@ -653,6 +664,41 @@ class Keyword(FingerprintedItem):
     def _execution_path_identifier():
         return "k"
 
+    def insert_running_parent_keyword_results(self):
+        if self.archiver.config.archive_keywords:
+            suite_id = self.parent_item.parent_item.id
+            test_id = self.parent_item.id
+            if self.kw_type == "keyword":
+                self.kw_type = "EXECUTION"
+                keyword_order = self.parent_item.execution_keyword_order
+                self.parent_item.execution_keyword_order += 1
+            elif self.kw_type == "setup":
+                keyword_order = 0
+            elif self.kw_type == "teardown":
+                keyword_order = 999999
+            
+            data = {
+                "test_run_id": self.archiver.test_run_id,
+                "suite_id": suite_id,
+                "test_id": test_id,
+                "execution_path": self.execution_path(),
+                "keyword": self.name,
+                "keyword_type": self.kw_type.upper(),
+                "keyword_order": keyword_order,
+                "status": "RUNNING",
+                "library": self.library,
+                "arguments": self.arguments,
+            }
+            self.archiver.db.insert_or_ignore("running_parent_keywords", data, ["test_run_id", "suite_id", "test_id", "execution_path"])
+
+    def update_finished_parent_keyword_results(self):
+        if self.archiver.config.archive_keywords:
+            suite_id = self.parent_item.parent_item.id
+            test_id = self.parent_item.id
+            data = {"status": self.status, "keyword_elapsed": self.elapsed_time}
+            key_values = {"test_run_id": self.archiver.test_run_id, "suite_id": suite_id, "test_id": test_id, "execution_path": self._execution_path}
+            self.archiver.db.update("running_parent_keywords", data, key_values)
+
     def insert_results(self):
         if self.kw_type == "teardown" and self.status == "FAIL":
             self.parent_item.failed_by_teardown = True
@@ -671,7 +717,7 @@ class Keyword(FingerprintedItem):
                 self.update_statistics()
 
     def insert_subtrees(self):
-        call_index = 0
+        call_index = 1
         for subtree in self.subtree_fingerprints:
             data = {
                 "fingerprint": self.fingerprint,
@@ -1018,14 +1064,19 @@ class Archiver:
     ):
         keyword = Keyword(self, name, library, kw_type.lower(), arguments)
         keyword.set_execution_path(execution_path)
+        if type(keyword.parent_item) == Test:
+            keyword.insert_running_parent_keyword_results()
         self.stack.append(keyword)
         return keyword
 
     def end_keyword(self, attributes=None):
+        keyword: Keyword = self.current_item(Keyword)
         if attributes:
-            self.current_item(Keyword).update_status(
+            keyword.update_status(
                 attributes["status"], attributes["starttime"], attributes["endtime"]
             )
+        if type(keyword.parent_item) == Test:
+            keyword.update_finished_parent_keyword_results()        
         self.current_item(Keyword).finish()
         self.stack.pop()
 
