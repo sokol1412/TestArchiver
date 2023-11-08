@@ -338,6 +338,17 @@ class PostgresqlDatabase(BaseDatabase):
         values.extend([key_data[key] for key in key_data])
         self._execute(sql, values)
 
+    def delete(self, table, key_values):
+        sql = "DELETE FROM {table} WHERE {key_fields};"
+        key_fields = " AND ".join(["{}=%s".format(field) for field in key_values])
+        sql = sql.format(
+            table=table,
+            key_fields=key_fields,
+        )
+        keys = list (key_values)
+        values = [key_values[key] for key in keys]
+        self._execute(sql, values)
+
     def insert(self, table, data):
         sql = "INSERT INTO {table}({fields}) VALUES ({value_placeholders});"
         keys = list(data)
