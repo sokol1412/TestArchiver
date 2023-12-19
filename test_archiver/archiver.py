@@ -326,7 +326,7 @@ class Suite(FingerprintedItem):
             self.archiver.db.insert("suite_result", data)
         except database.IntegrityError:
             print(
-                "ERROR: database.IntegrityError: these results have already been archived!"
+                "[INSERT TO suite_result table] ERROR: database.IntegrityError: [INSERT] this suite_result have already been archived! Make sure the test suite names are unique within execution."
             )
             sys.exit(1)
 
@@ -360,7 +360,7 @@ class Suite(FingerprintedItem):
                 self.archiver.db.update("suite_result", data, key_values)
             except database.IntegrityError:
                 print(
-                    "ERROR: database.IntegrityError: these results have already been archived!"
+                    "[UPDATE TO suite_result table] ERROR: database.IntegrityError: [UPDATE] this suite_result have already been archived! Make sure the test suite names are unique within execution."
                 )
                 sys.exit(1)
             self.insert_metadata()
@@ -456,7 +456,7 @@ class SuiteXML(Suite):
                 self.archiver.db.insert("suite_result", data)
             except database.IntegrityError:
                 print(
-                    "ERROR: database.IntegrityError: these results have already been archived!"
+                    "[INSERT TO suite_result table] ERROR: database.IntegrityError: [INSERT] this suite_result have already been archived! Make sure the test suite names are unique within execution."
                 )
                 sys.exit(1)
             self.insert_metadata()
@@ -536,7 +536,7 @@ class Test(FingerprintedItem):
             self.archiver.db.insert("test_result", data)
         except database.IntegrityError:
             print(
-                "ERROR: database.IntegrityError: these results have already been archived!"
+                "[INSERT TO test_result table] ERROR: database.IntegrityError: [INSERT] this test_result have already been archived! Make sure the test case names are unique within each test suite!"
             )
             sys.exit(1)
 
