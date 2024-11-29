@@ -6,6 +6,7 @@ from pathlib import Path
 
 try:
     import psycopg2
+    from psycopg2.extras import execute_values
 except ImportError:
     psycopg2 = None
 
@@ -345,7 +346,7 @@ class PostgresqlDatabase(BaseDatabase):
             table=table,
             key_fields=key_fields,
         )
-        keys = list (key_values)
+        keys = list(key_values)
         values = [key_values[key] for key in keys]
         self._execute(sql, values)
 
@@ -361,6 +362,30 @@ class PostgresqlDatabase(BaseDatabase):
             self._execute(sql, [data[key] for key in keys])
         except (psycopg2.errors.UniqueViolation, psycopg2.errors.NotNullViolation):
             raise IntegrityError()
+
+    def bulk_insert(self, table, data, keys):
+        try:
+            cursor = self._connection.cursor()
+
+            execute_values(
+                cursor, f"INSERT INTO {table} ({','.join(keys)}) VALUES" + "%s", data
+            )
+            self.commit()
+        except (psycopg2.errors.UniqueViolation, psycopg2.errors.NotNullViolation):
+            raise
+        finally:
+            cursor.close()
+
+    def _execute_raw(self, sql):
+        if values is None:
+            values = []
+        values = self._handle_values(values)
+        cursor = self._connection.cursor()
+        try:
+            cursor.execute(sql, values)
+            self.commit()
+        finally:
+            cursor.close()
 
     def max_value(self, table, column, where_data=None):
         where_data = where_data or {}
@@ -382,9 +407,11 @@ class PostgresqlDatabase(BaseDatabase):
         sql = sql.format(
             table=table,
             column=column,
-            where="WHERE " + " AND ".join(["{}=%s".format(col) for col in where_data])
-            if where_data
-            else "",
+            where=(
+                "WHERE " + " AND ".join(["{}=%s".format(col) for col in where_data])
+                if where_data
+                else ""
+            ),
         )
         row = self._execute_and_fetchone(sql, [where_data[key] for key in where_data])
         if row:
@@ -512,9 +539,11 @@ class SQLiteDatabase(BaseDatabase):
         sql = sql.format(
             table=table,
             column=column,
-            where="WHERE " + " AND ".join(["{}=?".format(col) for col in where_data])
-            if where_data
-            else "",
+            where=(
+                "WHERE " + " AND ".join(["{}=?".format(col) for col in where_data])
+                if where_data
+                else ""
+            ),
         )
         row = self._execute_and_fetchone(sql, [where_data[key] for key in where_data])
         if row:

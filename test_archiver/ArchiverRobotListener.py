@@ -6,6 +6,10 @@
 
 from . import archiver, configs
 
+import sys
+
+sys.setrecursionlimit(2500)
+
 
 class ArchiverRobotListener:
     ROBOT_LISTENER_API_VERSION = 2
@@ -80,11 +84,13 @@ class ArchiverRobotListener:
         self.archiver.begin_keyword(name, library, kw_type, arguments)
 
     def end_keyword(self, name, attrs):
+        self.archiver.finalize_log_messages()
         self.archiver.end_keyword(attrs)
 
     def log_message(self, message):
-        self.archiver.begin_log_message(message["level"], message["timestamp"])
-        self.archiver.end_log_message(message["message"])
+        self.archiver.begin_log_message(
+            message["level"], message["message"], timestamp=message["timestamp"]
+        )
 
     def message(self, message):
         if not self.generator:

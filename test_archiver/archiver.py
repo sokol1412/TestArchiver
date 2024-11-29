@@ -151,11 +151,15 @@ class FingerprintedItem(TestItem):
             self.elapsed_time = (
                 self.elapsed_time_setup
                 if self.elapsed_time_setup
-                else 0 + self.elapsed_time_execution
-                if self.elapsed_time_execution
-                else 0 + self.elapsed_time_teardown
-                if self.elapsed_time_teardown
-                else 0
+                else (
+                    0 + self.elapsed_time_execution
+                    if self.elapsed_time_execution
+                    else (
+                        0 + self.elapsed_time_teardown
+                        if self.elapsed_time_teardown
+                        else 0
+                    )
+                )
             )
         self.calculate_fingerprints()
         self.propagate_fingerprints_status_and_elapsed_time()
@@ -219,11 +223,11 @@ class FingerprintedItem(TestItem):
             "setup_status": self.setup_status,
             "execution_status": self.execution_status,
             "teardown_status": self.teardown_status,
-            "start_time": adjusted_timestamp(
-                self.start_time, self.archiver.time_adjust.secs()
-            )
-            if self.start_time
-            else None,
+            "start_time": (
+                adjusted_timestamp(self.start_time, self.archiver.time_adjust.secs())
+                if self.start_time
+                else None
+            ),
             "elapsed": self.elapsed_time,
             "setup_elapsed": self.elapsed_time_setup,
             "execution_elapsed": self.elapsed_time_execution,
@@ -277,9 +281,11 @@ class TestRun(FingerprintedItem):
         data = {
             "archived_using": archived_using,
             "archiver_version": version.ARCHIVER_VERSION,
-            "generated": adjusted_timestamp(generated, self.archiver.time_adjust.secs())
-            if generated
-            else None,
+            "generated": (
+                adjusted_timestamp(generated, self.archiver.time_adjust.secs())
+                if generated
+                else None
+            ),
             "generator": generator,
             "rpa": rpa,
             "dryrun": dryrun,
@@ -342,11 +348,15 @@ class Suite(FingerprintedItem):
             self.elapsed_time = (
                 self.elapsed_time_setup
                 if self.elapsed_time_setup
-                else 0 + self.elapsed_time_execution
-                if self.elapsed_time_execution
-                else 0 + self.elapsed_time_teardown
-                if self.elapsed_time_teardown
-                else 0
+                else (
+                    0 + self.elapsed_time_execution
+                    if self.elapsed_time_execution
+                    else (
+                        0 + self.elapsed_time_teardown
+                        if self.elapsed_time_teardown
+                        else 0
+                    )
+                )
             )
         self.calculate_fingerprints()
         self.propagate_fingerprints_status_and_elapsed_time()
@@ -385,13 +395,13 @@ class Suite(FingerprintedItem):
                 for name in self.archiver.additional_metadata:
                     self.metadata[name] = self.archiver.additional_metadata[name]
             if self.archiver.config.time_adjust_secs != 0:
-                self.metadata[
-                    "time_adjust_secs"
-                ] = self.archiver.config.time_adjust_secs
+                self.metadata["time_adjust_secs"] = (
+                    self.archiver.config.time_adjust_secs
+                )
             if self.archiver.config.time_adjust_with_system_timezone:
-                self.metadata[
-                    "time_adjust_secs_total"
-                ] = self.archiver.time_adjust.secs()
+                self.metadata["time_adjust_secs_total"] = (
+                    self.archiver.time_adjust.secs()
+                )
 
         for name in self.metadata:
             content = self.metadata[name]
@@ -434,11 +444,15 @@ class SuiteXML(Suite):
             self.elapsed_time = (
                 self.elapsed_time_setup
                 if self.elapsed_time_setup
-                else 0 + self.elapsed_time_execution
-                if self.elapsed_time_execution
-                else 0 + self.elapsed_time_teardown
-                if self.elapsed_time_teardown
-                else 0
+                else (
+                    0 + self.elapsed_time_execution
+                    if self.elapsed_time_execution
+                    else (
+                        0 + self.elapsed_time_teardown
+                        if self.elapsed_time_teardown
+                        else 0
+                    )
+                )
             )
         self.calculate_fingerprints()
         self.propagate_fingerprints_status_and_elapsed_time()
@@ -504,11 +518,15 @@ class Test(FingerprintedItem):
             self.elapsed_time = (
                 self.elapsed_time_setup
                 if self.elapsed_time_setup
-                else 0 + self.elapsed_time_execution
-                if self.elapsed_time_execution
-                else 0 + self.elapsed_time_teardown
-                if self.elapsed_time_teardown
-                else 0
+                else (
+                    0 + self.elapsed_time_execution
+                    if self.elapsed_time_execution
+                    else (
+                        0 + self.elapsed_time_teardown
+                        if self.elapsed_time_teardown
+                        else 0
+                    )
+                )
             )
         self.calculate_fingerprints()
         self.propagate_fingerprints_status_and_elapsed_time()
@@ -521,7 +539,11 @@ class Test(FingerprintedItem):
             test_run_id = self.test_run_id()
             suite_id = self.parent_item.id
             test_id = self.id
-            key_values = {"test_run_id": test_run_id, "suite_id": suite_id, "test_id": test_id}
+            key_values = {
+                "test_run_id": test_run_id,
+                "suite_id": suite_id,
+                "test_id": test_id,
+            }
             self.archiver.db.delete("running_parent_keywords", key_values)
 
     def insert_results(self):
@@ -610,11 +632,15 @@ class TestXML(Test):
             self.elapsed_time = (
                 self.elapsed_time_setup
                 if self.elapsed_time_setup
-                else 0 + self.elapsed_time_execution
-                if self.elapsed_time_execution
-                else 0 + self.elapsed_time_teardown
-                if self.elapsed_time_teardown
-                else 0
+                else (
+                    0 + self.elapsed_time_execution
+                    if self.elapsed_time_execution
+                    else (
+                        0 + self.elapsed_time_teardown
+                        if self.elapsed_time_teardown
+                        else 0
+                    )
+                )
             )
         self.calculate_fingerprints()
         self.propagate_fingerprints_status_and_elapsed_time()
@@ -676,7 +702,7 @@ class Keyword(FingerprintedItem):
                 keyword_order = 0
             elif self.kw_type == "teardown":
                 keyword_order = 999999
-            
+
             data = {
                 "test_run_id": self.archiver.test_run_id,
                 "suite_id": suite_id,
@@ -689,14 +715,23 @@ class Keyword(FingerprintedItem):
                 "library": self.library,
                 "arguments": self.arguments,
             }
-            self.archiver.db.insert_or_ignore("running_parent_keywords", data, ["test_run_id", "suite_id", "test_id", "execution_path"])
+            self.archiver.db.insert_or_ignore(
+                "running_parent_keywords",
+                data,
+                ["test_run_id", "suite_id", "test_id", "execution_path"],
+            )
 
     def update_finished_parent_keyword_results(self):
         if self.archiver.config.archive_keywords:
             suite_id = self.parent_item.parent_item.id
             test_id = self.parent_item.id
             data = {"status": self.status, "keyword_elapsed": self.elapsed_time}
-            key_values = {"test_run_id": self.archiver.test_run_id, "suite_id": suite_id, "test_id": test_id, "execution_path": self._execution_path}
+            key_values = {
+                "test_run_id": self.archiver.test_run_id,
+                "suite_id": suite_id,
+                "test_id": test_id,
+                "execution_path": self._execution_path,
+            }
             self.archiver.db.update("running_parent_keywords", data, key_values)
 
     def insert_results(self):
@@ -765,23 +800,29 @@ class Keyword(FingerprintedItem):
                 "cumulative_execution_time": self.elapsed_time,
                 "max_call_depth": self.kw_call_depth,
             }
-        if self.archiver.config.archive_keywords and self.archiver.config.archive_keyword_statistics:
-            self.archiver.db.insert("keyword_statistics", self.archiver.keyword_statistics[self.fingerprint])
+        if (
+            self.archiver.config.archive_keywords
+            and self.archiver.config.archive_keyword_statistics
+        ):
+            self.archiver.db.insert(
+                "keyword_statistics", self.archiver.keyword_statistics[self.fingerprint]
+            )
 
 
 class LogMessage(TestItem):
-    def __init__(self, archiver, log_level, timestamp):
+    def __init__(self, archiver, log_level, timestamp, message):
         super(LogMessage, self).__init__(archiver)
         self.parent_item = self._parent_item()
         self.log_level = log_level
         self.timestamp = timestamp
+        self.raw_message = message
         self.id = None
         self._time_adjust = TimeAdjust(
             archiver.config.time_adjust_secs,
             archiver.config.time_adjust_with_system_timezone,
         )
 
-    def insert(self, content):
+    def insert(self):
         if (
             not self.archiver.config.ignore_logs
             and not self.archiver.config.log_level_ignored(self.log_level)
@@ -789,11 +830,11 @@ class LogMessage(TestItem):
             message_length = config.max_log_message_length
 
             if message_length < 0:
-                message = content[message_length:]
+                message = self.raw_message[message_length:]
             elif message_length > 0:
-                message = content[:message_length]
+                message = self.raw_message[:message_length]
             else:
-                message = content
+                message = self.raw_message
             data = {
                 "test_run_id": self.test_run_id(),
                 "timestamp": adjusted_timestamp(
@@ -807,6 +848,42 @@ class LogMessage(TestItem):
             }
             self.id = self.archiver.db.insert("log_message", data)
 
+    def prepare_insert_value_row(self):
+        if (
+            not self.archiver.config.ignore_logs
+            and not self.archiver.config.log_level_ignored(self.log_level)
+        ):
+            message_length = config.max_log_message_length
+
+            if message_length < 0:
+                message = self.raw_message[message_length:]
+            elif message_length > 0:
+                message = self.raw_message[:message_length]
+            else:
+                message = self.raw_message
+            data = (
+                self.test_run_id(),
+                adjusted_timestamp(self.timestamp, self.archiver.time_adjust.secs()),
+                self.log_level,
+                message,
+                self.parent_test().id if self.parent_test() else None,
+                self.parent_suite().id,
+                self.execution_path(),
+            )
+            return data
+
+    @staticmethod
+    def get_columns():
+        return (
+            "test_run_id",
+            "timestamp",
+            "log_level",
+            "message",
+            "test_id",
+            "suite_id",
+            "execution_path",
+        )
+
     def execution_path(self):
         return self.parent_item.execution_path()
 
@@ -817,6 +894,7 @@ def database_connection(configuration):
 
 class Archiver:
     def __init__(self, connection, configuration, build_number_cache=None):
+        self.count = 0
         self.config = configuration
         self.test_type = None
         self.additional_metadata = self.config.metadata
@@ -830,6 +908,7 @@ class Archiver:
         self.output_from_dryrun = False
         self.db = connection
         self.stack = []
+        self.logs_stack = []
         self.keyword_statistics = {}
         self.build_number_cache = build_number_cache or {}
         self.execution_context = self.config.execution_context
@@ -1071,12 +1150,18 @@ class Archiver:
 
     def end_keyword(self, attributes=None):
         keyword: Keyword = self.current_item(Keyword)
+        if keyword.kw_call_depth == 1:
+            self.count += 1
+            self.db.bulk_insert(
+                "log_message", self.logs_stack, LogMessage.get_columns()
+            )
+            self.logs_stack = []
         if attributes:
             keyword.update_status(
                 attributes["status"], attributes["starttime"], attributes["endtime"]
             )
         if type(keyword.parent_item) == Test:
-            keyword.update_finished_parent_keyword_results()        
+            keyword.update_finished_parent_keyword_results()
         self.current_item(Keyword).finish()
         self.stack.pop()
 
@@ -1104,14 +1189,24 @@ class Archiver:
 
     def log_message(self, level, content, timestamp=None):
         self.begin_log_message(level, timestamp)
-        self.end_log_message(content)
 
-    def begin_log_message(self, level, timestamp=None):
-        self.stack.append(LogMessage(self, level, timestamp))
+    def begin_log_message(self, level, message, timestamp=None):
+        self.stack.append(LogMessage(self, level, timestamp, message=message))
 
-    def end_log_message(self, content):
-        self.current_item(LogMessage).insert(content)
-        self.stack.pop()
+    def finalize_log_messages(self):
+        is_log_message = True
+        while is_log_message:
+            item = None
+            if self.stack:
+                item = self.stack[-1]
+            else:
+                return
+            if isinstance(item, LogMessage):
+                item: LogMessage
+                self.logs_stack.append(item.prepare_insert_value_row())
+                self.stack.pop()
+            else:
+                is_log_message = False
 
     def report_keyword_statistics(self):
         for fingerprint in self.keyword_statistics:
