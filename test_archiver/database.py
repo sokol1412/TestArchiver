@@ -3,6 +3,7 @@
 import os
 import sqlite3
 from pathlib import Path
+from retry import retry
 
 try:
     import psycopg2
@@ -140,9 +141,13 @@ class BaseDatabase:
             self._connection.rollback()
         return None
 
+    @retry(tries=3, delay=0.5)
     def _execute(self, sql, values=None):
         if values is None:
             values = []
+        # Handle reconnection scenarios
+        if self._connection.closed != 0:
+            self._connect()
         values = self._handle_values(values)
         cursor = self._connection.cursor()
         try:
@@ -151,9 +156,13 @@ class BaseDatabase:
         finally:
             cursor.close()
 
+    @retry(tries=3, delay=0.5)
     def _execute_and_fetchone(self, sql, values=None):
         if values is None:
             values = []
+        # Handle reconnection scenarios
+        if self._connection.closed != 0:
+            self._connect()
         values = self._handle_values(values)
         cursor = self._connection.cursor()
         row = None
@@ -363,7 +372,11 @@ class PostgresqlDatabase(BaseDatabase):
         except (psycopg2.errors.UniqueViolation, psycopg2.errors.NotNullViolation):
             raise IntegrityError()
 
+    @retry(tries=3, delay=0.5)
     def bulk_insert(self, table, data, keys):
+        # Handle reconnects
+        if self._connection.closed != 0:
+            self._connect()
         try:
             cursor = self._connection.cursor()
 
@@ -376,9 +389,13 @@ class PostgresqlDatabase(BaseDatabase):
         finally:
             cursor.close()
 
+    @retry(tries=3, delay=0.5)
     def _execute_raw(self, sql):
         if values is None:
             values = []
+        # Handle reconnects
+        if self._connection.closed != 0:
+            self._connect()
         values = self._handle_values(values)
         cursor = self._connection.cursor()
         try:
