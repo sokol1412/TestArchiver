@@ -23,7 +23,7 @@ setuptools.setup(
     keywords="robotframework test report history",
     packages=setuptools.find_packages(),
     python_requires=">=3.0",
-    install_requires=["psycopg2-binary>=2.8.5"],
+    install_requires=["psycopg2-binary>=2.8.5", "retry==0.9.2"],
     include_package_data=True,
     zip_safe=False,
     scripts=["helpers/diff2change_context_list.py"],
