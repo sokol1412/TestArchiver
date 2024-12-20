@@ -3,6 +3,7 @@
 import os
 import sqlite3
 from pathlib import Path
+
 from retry import retry
 
 try:
@@ -27,10 +28,7 @@ def get_connection_and_check_schema(config):
         connection = PostgresqlDatabase(config)
     elif config.db_engine in ("sqlite", "sqlite3"):
         if config.host or config.user:
-            raise Exception(
-                "--host or --user options should not be used "
-                "with default sqlite3 database engine"
-            )
+            raise Exception("--host or --user options should not be used " "with default sqlite3 database engine")
         connection = SQLiteDatabase(config)
     if connection:
         try:
@@ -96,20 +94,9 @@ class BaseDatabase:
             for update_id, is_minor, file in self._schema_updates:
                 if update_id > latest_update_applied:
                     base_dir = Path(os.path.dirname(__file__))
-                    script_file = (
-                        base_dir
-                        / "schemas/migrations"
-                        / self._db_engine_identifier()
-                        / file
-                    )
-                    if self.allow_major_schema_updates or (
-                        is_minor and self.allow_minor_schema_updates
-                    ):
-                        print(
-                            "Running schema update {} from: {}".format(
-                                update_id, script_file
-                            )
-                        )
+                    script_file = base_dir / "schemas/migrations" / self._db_engine_identifier() / file
+                    if self.allow_major_schema_updates or (is_minor and self.allow_minor_schema_updates):
+                        print("Running schema update {} from: {}".format(update_id, script_file))
                         self._run_script(script_file)
                     elif is_minor:
                         raise ArchiverSchemaException(
@@ -126,9 +113,7 @@ class BaseDatabase:
 
         elif latest_update_applied > self._schema_updates[-1][0]:
             # The schema is newer than the Archiver
-            minimum_version = self.fetch_one_value(
-                "schema_updates", "applied_by", {"update_id": latest_update_applied}
-            )
+            minimum_version = self.fetch_one_value("schema_updates", "applied_by", {"update_id": latest_update_applied})
             raise ArchiverSchemaException(
                 "ERROR: The version of TestArchiver is older than the schema. "
                 "Please update to version '{}' or higher".format(minimum_version)
@@ -215,8 +200,8 @@ class PostgresqlDatabase(BaseDatabase):
                 "Try for example: 'pip install psycopg2-binary'"
             )
 
-        if self.schema:
-            options = f"-c search_path={self.schema}"
+        # if self.schema:
+        #     options = f"-c search_path={self.schema}"
 
         ssl_mode = "require" if self.require_ssl else "prefer"
 
@@ -228,7 +213,6 @@ class PostgresqlDatabase(BaseDatabase):
                 user=self.user,
                 password=self.password,
                 sslmode=ssl_mode,
-                options=options,
             )
         except:
             print(f"ERROR: Cannot setup test_archiver.ArchiverRobotListener!")
@@ -240,17 +224,15 @@ class PostgresqlDatabase(BaseDatabase):
                       user: {self.user}
                       password: #############################HIDDEN_DUE_TO_SECURITY_REASONS#############################
                       ssl_mode: {ssl_mode}
-                      options: {options}"""
+                      """
             )
 
     def _initialize_schema(self):
         try:
-            self._execute("SELECT 'test_run'::regclass;")
+            self._execute("SELECT {self.schema}.'test_run'::regclass;")
         except psycopg2.ProgrammingError:
             self._connection.rollback()
-            schema_file = os.path.join(
-                os.path.dirname(__file__), "schemas/schema_postgres.sql"
-            )
+            schema_file = os.path.join(os.path.dirname(__file__), "schemas/schema_postgres.sql")
             self._run_script(schema_file)
             return True
         return False
@@ -264,7 +246,7 @@ class PostgresqlDatabase(BaseDatabase):
         return values
 
     def _fetch_id(self, table, data, key_fields):
-        sql = "SELECT id FROM {table} WHERE {key_placeholders}"
+        sql = "SELECT id FROM {self.schema}.{table} WHERE {key_placeholders}"
         sql = sql.format(
             table=table,
             key_placeholders=" AND ".join(["{}=%s".format(key) for key in key_fields]),
@@ -278,15 +260,11 @@ class PostgresqlDatabase(BaseDatabase):
         row_id = self._fetch_id(table, data, key_fields)
         if not row_id:
             sql = (
-                "INSERT INTO {table}({fields}) VALUES ({value_placeholders}) "
+                "INSERT INTO {self.schema}.{table}({fields}) VALUES ({value_placeholders}) "
                 "{conflict_statement} RETURNING id;"
             )
             keys = list(data)
-            on_conflict = (
-                " ON CONFLICT ({}) DO NOTHING ".format(",".join(key_fields))
-                if key_fields
-                else ""
-            )
+            on_conflict = " ON CONFLICT ({}) DO NOTHING ".format(",".join(key_fields)) if key_fields else ""
             sql = sql.format(
                 table=table,
                 fields=",".join(keys),
@@ -298,13 +276,9 @@ class PostgresqlDatabase(BaseDatabase):
         return row_id
 
     def insert_and_return_id(self, table, data, key_fields=None):
-        sql = "INSERT INTO {table}({fields}) VALUES ({value_placeholders}) {conflict_statement} RETURNING id;"
+        sql = "INSERT INTO {self.schema}.{table}({fields}) VALUES ({value_placeholders}) {conflict_statement} RETURNING id;"
         keys = list(data)
-        on_conflict = (
-            " ON CONFLICT ({}) DO NOTHING ".format(",".join(key_fields))
-            if key_fields
-            else ""
-        )
+        on_conflict = " ON CONFLICT ({}) DO NOTHING ".format(",".join(key_fields)) if key_fields else ""
         sql = sql.format(
             table=table,
             fields=",".join(keys),
@@ -319,13 +293,9 @@ class PostgresqlDatabase(BaseDatabase):
         return row_id
 
     def insert_or_ignore(self, table, data, key_fields=None):
-        sql = "INSERT INTO {table}({fields}) VALUES ({value_placeholders}) {conflict_statement};"
+        sql = "INSERT INTO {self.schema}.{table}({fields}) VALUES ({value_placeholders}) {conflict_statement};"
         keys = list(data)
-        on_conflict = (
-            " ON CONFLICT ({}) DO NOTHING ".format(",".join(key_fields))
-            if key_fields
-            else ""
-        )
+        on_conflict = " ON CONFLICT ({}) DO NOTHING ".format(",".join(key_fields)) if key_fields else ""
         sql = sql.format(
             table=table,
             fields=",".join(keys),
@@ -335,7 +305,7 @@ class PostgresqlDatabase(BaseDatabase):
         self._execute(sql, [data[key] for key in keys])
 
     def update(self, table, data, key_data):
-        sql = "UPDATE {table} SET {updates} WHERE {key_fields};"
+        sql = "UPDATE {self.schema}.{table} SET {updates} WHERE {key_fields};"
         keys = list(data)
         updates = ",".join(["{}=%s".format(field) for field in data])
         key_fields = " AND ".join(["{}=%s".format(field) for field in key_data])
@@ -349,7 +319,7 @@ class PostgresqlDatabase(BaseDatabase):
         self._execute(sql, values)
 
     def delete(self, table, key_values):
-        sql = "DELETE FROM {table} WHERE {key_fields};"
+        sql = "DELETE FROM {self.schema}.{table} WHERE {key_fields};"
         key_fields = " AND ".join(["{}=%s".format(field) for field in key_values])
         sql = sql.format(
             table=table,
@@ -360,7 +330,7 @@ class PostgresqlDatabase(BaseDatabase):
         self._execute(sql, values)
 
     def insert(self, table, data):
-        sql = "INSERT INTO {table}({fields}) VALUES ({value_placeholders});"
+        sql = "INSERT INTO {self.schema}.{table}({fields}) VALUES ({value_placeholders});"
         keys = list(data)
         sql = sql.format(
             table=table,
@@ -380,9 +350,7 @@ class PostgresqlDatabase(BaseDatabase):
         try:
             cursor = self._connection.cursor()
 
-            execute_values(
-                cursor, f"INSERT INTO {table} ({','.join(keys)}) VALUES" + "%s", data
-            )
+            execute_values(cursor, f"INSERT INTO {self.schema}.{table} ({','.join(keys)}) VALUES" + "%s", data)
             self.commit()
         except (psycopg2.errors.UniqueViolation, psycopg2.errors.NotNullViolation):
             raise
@@ -407,28 +375,22 @@ class PostgresqlDatabase(BaseDatabase):
     def max_value(self, table, column, where_data=None):
         where_data = where_data or {}
         where_filters = " AND ".join(["{}=%s".format(col) for col in where_data])
-        sql = "SELECT max({column}) FROM {table} {where};"
+        sql = "SELECT max({column}) FROM {self.schema}.{table} {where};"
         sql = sql.format(
             table=table,
             column=column,
             where="WHERE {}".format(where_filters) if where_data else "",
         )
-        (value,) = self._execute_and_fetchone(
-            sql, [where_data[key] for key in where_data]
-        )
+        (value,) = self._execute_and_fetchone(sql, [where_data[key] for key in where_data])
         return value
 
     def fetch_one_value(self, table, column, where_data=None):
         where_data = where_data or {}
-        sql = "SELECT {column} FROM {table} {where};"
+        sql = "SELECT {column} FROM {self.schema}.{table} {where};"
         sql = sql.format(
             table=table,
             column=column,
-            where=(
-                "WHERE " + " AND ".join(["{}=%s".format(col) for col in where_data])
-                if where_data
-                else ""
-            ),
+            where=("WHERE " + " AND ".join(["{}=%s".format(col) for col in where_data]) if where_data else ""),
         )
         row = self._execute_and_fetchone(sql, [where_data[key] for key in where_data])
         if row:
@@ -450,18 +412,14 @@ class SQLiteDatabase(BaseDatabase):
     def _initialize_schema(self):
         query = "SELECT 1 FROM sqlite_master WHERE type='table' AND name='test_run';"
         if not self._execute_and_fetchone(query):
-            schema_file = os.path.join(
-                os.path.dirname(__file__), "schemas/schema_sqlite.sql"
-            )
+            schema_file = os.path.join(os.path.dirname(__file__), "schemas/schema_sqlite.sql")
             self._run_script(schema_file)
             return True
         return False
 
     def _run_script(self, script_file):
         with open(script_file) as file:
-            self._connection.executescript(
-                file.read().format(applied_by=version.ARCHIVER_VERSION)
-            )
+            self._connection.executescript(file.read().format(applied_by=version.ARCHIVER_VERSION))
             self.commit()
 
     def _handle_values(self, values):
@@ -482,9 +440,7 @@ class SQLiteDatabase(BaseDatabase):
             sql = "SELECT id FROM {table} WHERE {key_placeholders}"
             sql = sql.format(
                 table=table,
-                key_placeholders=" AND ".join(
-                    ["{}=?".format(key) for key in key_fields]
-                ),
+                key_placeholders=" AND ".join(["{}=?".format(key) for key in key_fields]),
             )
             row = self._execute_and_fetchone(sql, [data[key] for key in key_fields])
             if row:
@@ -545,9 +501,7 @@ class SQLiteDatabase(BaseDatabase):
             column=column,
             where="WHERE {}".format(where_filters) if where_data else "",
         )
-        (value,) = self._execute_and_fetchone(
-            sql, [where_data[key] for key in where_data]
-        )
+        (value,) = self._execute_and_fetchone(sql, [where_data[key] for key in where_data])
         return value
 
     def fetch_one_value(self, table, column, where_data=None):
@@ -556,11 +510,7 @@ class SQLiteDatabase(BaseDatabase):
         sql = sql.format(
             table=table,
             column=column,
-            where=(
-                "WHERE " + " AND ".join(["{}=?".format(col) for col in where_data])
-                if where_data
-                else ""
-            ),
+            where=("WHERE " + " AND ".join(["{}=?".format(col) for col in where_data]) if where_data else ""),
         )
         row = self._execute_and_fetchone(sql, [where_data[key] for key in where_data])
         if row:
