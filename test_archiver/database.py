@@ -1,4 +1,3 @@
-# pylint: disable=E1101
 
 import os
 import sqlite3
@@ -11,7 +10,7 @@ try:
     from psycopg2.extras import execute_values
 except ImportError:
     psycopg2 = None
-
+from test_archiver import ArchiverRobotListener
 from . import configs, version
 
 SCHEMA_UPDATES = (
@@ -32,9 +31,9 @@ def get_connection_and_check_schema(config):
         connection = SQLiteDatabase(config)
     if connection:
         try:
-            connection.check_and_update_schema()
+           connection.check_and_update_schema()
         except:
-            print("ERROR: Cannot check and update schema for connection!")
+           print("ERROR: Cannot check and update schema for connection!")
         return connection
     raise Exception("Unsupported database type '{}'".format(config.db_engine))
 
@@ -66,7 +65,7 @@ class BaseDatabase:
         self._connect()
 
     def current_schema_version(self):
-        return self._schema_updates[-1][0]
+       return self._schema_updates[-1][0]
 
     def _db_engine_identifier(self):
         raise NotImplementedError()
@@ -200,9 +199,6 @@ class PostgresqlDatabase(BaseDatabase):
                 "Try for example: 'pip install psycopg2-binary'"
             )
 
-        # if self.schema:
-        #     options = f"-c search_path={self.schema}"
-
         ssl_mode = "require" if self.require_ssl else "prefer"
 
         try:
@@ -228,8 +224,12 @@ class PostgresqlDatabase(BaseDatabase):
             )
 
     def _initialize_schema(self):
+        if isinstance(self, PostgresqlDatabase):
+            schema = self.schema
+        elif isinstance(self, ArchiverRobotListener):
+            schema = self.archiver.schema
         try:
-            self._execute("SELECT {self.schema}.'test_run'::regclass;")
+            self._execute(f"SELECT {schema}.'test_run'::regclass;")
         except psycopg2.ProgrammingError:
             self._connection.rollback()
             schema_file = os.path.join(os.path.dirname(__file__), "schemas/schema_postgres.sql")
@@ -246,8 +246,14 @@ class PostgresqlDatabase(BaseDatabase):
         return values
 
     def _fetch_id(self, table, data, key_fields):
-        sql = "SELECT id FROM {self.schema}.{table} WHERE {key_placeholders}"
+        if isinstance(self, PostgresqlDatabase):
+            schema = self.schema
+        elif isinstance(self, ArchiverRobotListener):
+            schema = self.archiver.schema
+
+        sql = "SELECT id FROM {schema}.{table} WHERE {key_placeholders}"
         sql = sql.format(
+            schema=schema,
             table=table,
             key_placeholders=" AND ".join(["{}=%s".format(key) for key in key_fields]),
         )
@@ -257,10 +263,15 @@ class PostgresqlDatabase(BaseDatabase):
         return None
 
     def return_id_or_insert_and_return_id(self, table, data, key_fields):
+        if isinstance(self, PostgresqlDatabase):
+            schema = self.schema
+        elif isinstance(self, ArchiverRobotListener):
+            schema = self.archiver.schema
+
         row_id = self._fetch_id(table, data, key_fields)
         if not row_id:
             sql = (
-                "INSERT INTO {self.schema}.{table}({fields}) VALUES ({value_placeholders}) "
+                "INSERT INTO {schema}.{table}({fields}) VALUES ({value_placeholders}) "
                 "{conflict_statement} RETURNING id;"
             )
             keys = list(data)
@@ -268,6 +279,7 @@ class PostgresqlDatabase(BaseDatabase):
             sql = sql.format(
                 table=table,
                 fields=",".join(keys),
+                schema=schema,
                 value_placeholders=",".join(["%s" for _ in keys]),
                 conflict_statement=on_conflict,
             )
@@ -276,11 +288,16 @@ class PostgresqlDatabase(BaseDatabase):
         return row_id
 
     def insert_and_return_id(self, table, data, key_fields=None):
-        sql = "INSERT INTO {self.schema}.{table}({fields}) VALUES ({value_placeholders}) {conflict_statement} RETURNING id;"
+        if isinstance(self, PostgresqlDatabase):
+            schema = self.schema
+        elif isinstance(self, ArchiverRobotListener):
+            schema = self.archiver.schema
+        sql = "INSERT INTO {schema}.{table}({fields}) VALUES ({value_placeholders}) {conflict_statement} RETURNING id;"
         keys = list(data)
         on_conflict = " ON CONFLICT ({}) DO NOTHING ".format(",".join(key_fields)) if key_fields else ""
         sql = sql.format(
             table=table,
+            schema=schema,
             fields=",".join(keys),
             value_placeholders=",".join(["%s" for _ in keys]),
             conflict_statement=on_conflict,
@@ -293,11 +310,17 @@ class PostgresqlDatabase(BaseDatabase):
         return row_id
 
     def insert_or_ignore(self, table, data, key_fields=None):
-        sql = "INSERT INTO {self.schema}.{table}({fields}) VALUES ({value_placeholders}) {conflict_statement};"
+        if isinstance(self, PostgresqlDatabase):
+            schema = self.schema
+        elif isinstance(self, ArchiverRobotListener):
+            schema = self.archiver.schema
+
+        sql = "INSERT INTO {schema}.{table}({fields}) VALUES ({value_placeholders}) {conflict_statement};"
         keys = list(data)
         on_conflict = " ON CONFLICT ({}) DO NOTHING ".format(",".join(key_fields)) if key_fields else ""
         sql = sql.format(
             table=table,
+            schema=schema,
             fields=",".join(keys),
             value_placeholders=",".join(["%s" for _ in keys]),
             conflict_statement=on_conflict,
@@ -305,13 +328,19 @@ class PostgresqlDatabase(BaseDatabase):
         self._execute(sql, [data[key] for key in keys])
 
     def update(self, table, data, key_data):
-        sql = "UPDATE {self.schema}.{table} SET {updates} WHERE {key_fields};"
+        if isinstance(self, PostgresqlDatabase):
+            schema = self.schema
+        elif isinstance(self, ArchiverRobotListener):
+            schema = self.archiver.schema
+
+        sql = "UPDATE {schema}.{table} SET {updates} WHERE {key_fields};"
         keys = list(data)
         updates = ",".join(["{}=%s".format(field) for field in data])
         key_fields = " AND ".join(["{}=%s".format(field) for field in key_data])
         sql = sql.format(
             table=table,
             updates=updates,
+            schema=schema,
             key_fields=key_fields,
         )
         values = [data[key] for key in keys]
@@ -319,10 +348,15 @@ class PostgresqlDatabase(BaseDatabase):
         self._execute(sql, values)
 
     def delete(self, table, key_values):
-        sql = "DELETE FROM {self.schema}.{table} WHERE {key_fields};"
+        if isinstance(self, PostgresqlDatabase):
+            schema = self.schema
+        elif isinstance(self, ArchiverRobotListener):
+            schema = self.archiver.schema
+        sql = "DELETE FROM {schema}.{table} WHERE {key_fields};"
         key_fields = " AND ".join(["{}=%s".format(field) for field in key_values])
         sql = sql.format(
             table=table,
+            schema=schema,
             key_fields=key_fields,
         )
         keys = list(key_values)
@@ -330,10 +364,15 @@ class PostgresqlDatabase(BaseDatabase):
         self._execute(sql, values)
 
     def insert(self, table, data):
-        sql = "INSERT INTO {self.schema}.{table}({fields}) VALUES ({value_placeholders});"
+        if isinstance(self, PostgresqlDatabase):
+            schema = self.schema
+        elif isinstance(self, ArchiverRobotListener):
+            schema = self.archiver.schema
+        sql = "INSERT INTO {schema}.{table}({fields}) VALUES ({value_placeholders});"
         keys = list(data)
         sql = sql.format(
             table=table,
+            schema=schema,
             fields=",".join(keys),
             value_placeholders=",".join(["%s" for _ in keys]),
         )
@@ -349,8 +388,11 @@ class PostgresqlDatabase(BaseDatabase):
             self._connect()
         try:
             cursor = self._connection.cursor()
-
-            execute_values(cursor, f"INSERT INTO {self.schema}.{table} ({','.join(keys)}) VALUES" + "%s", data)
+            if isinstance(self, PostgresqlDatabase):
+                schema = self.schema
+            elif isinstance(self, ArchiverRobotListener):
+                schema = self.archiver.schema
+            execute_values(cursor, f"INSERT INTO {schema}.{table} ({','.join(keys)}) VALUES" + "%s", data)
             self.commit()
         except (psycopg2.errors.UniqueViolation, psycopg2.errors.NotNullViolation):
             raise
@@ -375,10 +417,15 @@ class PostgresqlDatabase(BaseDatabase):
     def max_value(self, table, column, where_data=None):
         where_data = where_data or {}
         where_filters = " AND ".join(["{}=%s".format(col) for col in where_data])
-        sql = "SELECT max({column}) FROM {self.schema}.{table} {where};"
+        if isinstance(self, PostgresqlDatabase):
+            schema = self.schema
+        elif isinstance(self, ArchiverRobotListener):
+            schema = self.archiver.schema
+        sql = "SELECT max({column}) FROM {schema}.{table} {where};"
         sql = sql.format(
             table=table,
             column=column,
+            schema=schema,
             where="WHERE {}".format(where_filters) if where_data else "",
         )
         (value,) = self._execute_and_fetchone(sql, [where_data[key] for key in where_data])
@@ -386,9 +433,14 @@ class PostgresqlDatabase(BaseDatabase):
 
     def fetch_one_value(self, table, column, where_data=None):
         where_data = where_data or {}
-        sql = "SELECT {column} FROM {self.schema}.{table} {where};"
+        if isinstance(self, PostgresqlDatabase):
+            schema = self.schema
+        elif isinstance(self, ArchiverRobotListener):
+            schema = self.archiver.schema
+        sql = "SELECT {column} FROM {schema}.{table} {where};"
         sql = sql.format(
             table=table,
+            schema=schema,
             column=column,
             where=("WHERE " + " AND ".join(["{}=%s".format(col) for col in where_data]) if where_data else ""),
         )
