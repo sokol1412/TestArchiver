@@ -1152,6 +1152,7 @@ class Archiver:
         keyword: Keyword = self.current_item(Keyword)
         if keyword.kw_call_depth == 1:
             self.count += 1
+            self.finalize_log_messages()
             self.db.bulk_insert(
                 "log_message", self.logs_stack, LogMessage.get_columns()
             )
