@@ -1152,6 +1152,7 @@ class Archiver:
         keyword: Keyword = self.current_item(Keyword)
         if keyword.kw_call_depth == 1:
             self.count += 1
+            self.finalize_log_messages()
             self.db.bulk_insert(
                 "log_message", self.logs_stack, LogMessage.get_columns()
             )
@@ -1191,22 +1192,13 @@ class Archiver:
         self.begin_log_message(level, timestamp)
 
     def begin_log_message(self, level, message, timestamp=None):
-        self.stack.append(LogMessage(self, level, timestamp, message=message))
+        self.logs_stack.append(LogMessage(self, level, timestamp, message=message))
 
     def finalize_log_messages(self):
-        is_log_message = True
-        while is_log_message:
-            item = None
-            if self.stack:
-                item = self.stack[-1]
-            else:
-                return
-            if isinstance(item, LogMessage):
-                item: LogMessage
-                self.logs_stack.append(item.prepare_insert_value_row())
-                self.stack.pop()
-            else:
-                is_log_message = False
+        temp = []
+        for item in self.logs_stack:
+            temp.append(item.prepare_insert_value_row())
+        self.logs_stack = temp
 
     def report_keyword_statistics(self):
         for fingerprint in self.keyword_statistics:
