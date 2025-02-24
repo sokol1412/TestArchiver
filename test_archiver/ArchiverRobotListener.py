@@ -5,6 +5,7 @@
 # Listener methods have unused arguments
 
 from . import archiver, configs
+from .archiver import LogMessage, Keyword
 
 import sys
 
@@ -86,10 +87,10 @@ class ArchiverRobotListener:
     def end_keyword(self, name, attrs):
         # hide errors
         try:
-            self.archiver.finalize_log_messages()
             self.archiver.end_keyword(attrs)
         except:
-            self.archiver.stack.pop()
+            if isinstance(self.archiver.stack[-1], (LogMessage, Keyword)):
+                self.archiver.stack.pop()
 
     def log_message(self, message):
         self.archiver.begin_log_message(
